@@ -20,15 +20,15 @@ Now you need to set the map configuration to link the data to the new polygon fi
 * Paste the following code in the location of the deleted lines
 ```
 userVariables.regionsConfig = [{
-  regionData = sales_areas,
-  groupName = 'sales_regions',
-  regionField = 'name',
-  maxZoomLevel = 5
+  regionData: sales_areas,
+  groupName: 'sales_region',
+  regionField: 'name',
+  maxZoomLevel: 5
 },{
-  regionData = states,
-  groupName = 'State',
-  regionField = "STATE_2",
-  minZoomLevel = 6
+  regionData: states,
+  groupName: 'State',
+  regionField: "STATE_2",
+  minZoomLevel: 6
 }];
 ```
 This block re-defines the map layers.  Our test data source already has columns to support the new regions, so we don't need to change the data source.  The first array object says our polygons come from the "sales_areas" object, which is defined in the "us_sales_areas.js" library loaded above; the polygons in that file have a "name" property, which is assigned to the "regionField" member.  The data source has the corresponding values in the "sales_regions", so we assign that filed name to the "groupName" member.  Finally we specify a "maxZoomLevel" of 5, after the user zooms in 5 levels this layer will disappear.  Since we did not set a "minZoomLevel" this layer is visible all the way out to the global level.
