@@ -1,0 +1,29 @@
+{
+  "initialExtent" : {"centerPoint": {"lat":37.8, "lon":-96}, "zoomLevel": 4},
+  "bounds": {
+    "northEast": { "lat": 50.26, "lon": -126.19 },
+    "southWest" : { "lat": 23.87, "lon": -66.66},
+    "minZoom": 4
+  },
+  "tileLayer": {
+    "provider": "OpenStreetMap.BlackAndWhite"
+  },
+
+  "regionsConfig" : [{
+    "regionData": "test_region_level1",
+    "groupName": "region_name1",
+    "regionField": "name_1",
+    "maxZoomLevel": 4
+    },{
+    "regionData": "test_region_level2",
+    "groupName": "region_name2",
+    "regionField": "name_2",
+    "minZoomLevel": 5,
+    "maxZoomLevel": 7
+    },{
+    "regionData": "test_region_level3",
+    "groupName": "region_name3",
+    "regionField": "name_3",
+    "minZoomLevel": 8
+    }]
+}

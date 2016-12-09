@@ -4,338 +4,343 @@
 /* global controller */
 
 (function() {
-var userVariables = {};
-//Set the initial map extent.  This is what part of the world will be shown
-//when the user first opens the visualization.  The extent consists of a 
-//center point lat/lon and a zoom level.  Zoom level is an integer between 0 and X, where
-//0 is the whole world and X is the most detailed level as defined by the tile layer selected
-//Some examples:
-// United States (contiguous): 
-userVariables.initialExtent = {centerPoint: {lat:37.8, lon:-96}, zoomLevel: 4};
-// Europe: 
-//userVariables.initialExtent = {centerPoint: {lat:53.87, lon:15.55}, zoomLevel: 4};
-// Australia:
-//userVariables.initialExtent = {centerPoint: {lat: -25.08, lon: 134.26}, zoomLevel: 4};
 
+  /*
+  Help out the administrator who is configuring the map.  Make sure that all of the right
+  variables are present and declared.
+  */
+  var validateVariables = function(vars) {
+    var result = true;
+    var message = '';
+    return {
+      result: result,
+      message: message
+    };
+  }
 
-//Specify the tile layer to show in the background of the map using either the
-//provider from leaflet-extras or by setting the parameters yourself
+  // The administrator creating this visualization goes to the chart Configuration
+  //associated with the data source and
+  try {
+    userVariables = JSON.parse(controller.variables['Map Configuration']);
+  }
+  catch(e) {
+    console.error('Unable to parse configuration string.  Make sure the confiuration string contains well formatted JSON');
+    console.error(e.message);
+    console.error('Configuration string is:', controller.variables['Map Configuration']);
+    return;
+  }
 
-//Using leaflet provider, as described at https://github.com/leaflet-extras/leaflet-providers
-userVariables.tileLayer = L.tileLayer.provider('OpenStreetMap.BlackAndWhite');
+  validationResult = validateVariables(userVariables);
+  if(!validationResult.result) {
+    console.error('Error in the map configuration variables');
+    console.error(validationResult.message);
+    console.error('configuration variable:', userVariables);
+  }
 
-//Example setting the parameters manually, in this case for OpenStreetMap Mapnik
-//userVariables.tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-//	maxZoom: 19,
-//	attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-//});
+  //Example setting the tile server parameters manually, in this case for OpenStreetMap Mapnik
+  //userVariables.tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  //	maxZoom: 19,
+  //	attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  //});
 
-//Load and configure the regions to use for data display.  Regions must be in 
-//GeoJSON format.  Multiple regions can be set to show data at different zoom
-//levels with different join fields.  This array must contain at least one element.
-userVariables.regionsConfig = [{
-    //The geoJSON containing the regions.  You _could_ put the whole geoJSON payload
-    //here, but that might make things a bit difficult to read
-    regionData: test_region_level1,
-    //The chart needs 2 fields to render the data.  First, the field in the data
-    //source containing the region name/id
-    groupName: 'region_name1',
-    //next, the name of the field in the geoJSON containing the same name/id
-    regionField: 'name_1',
-    //optionally you can set the min/max zoom levels for this layer
-    //minZoomLevel not set, so will be shown out to global
-    //if zoom levels overlap only the first one hit will be shown
-    maxZoomLevel: 4 //won't show when zoomed in past level 10
-},{
-    regionData: test_region_level2,
-    groupName: 'region_name2',
-    regionField: 'name_2',
-    minZoomLevel: 5,
-    maxZoomLevel: 7
-},{
-    regionData: test_region_level3,
-    groupName: 'region_name3',
-    regionField: 'name_3',
-    minZoomLevel: 8
-    //maxZoomLevel not set, so will be shown all the way to most detailed
-}];
+  /*
+  ****************
+  End User Customization Section
+  Everything from here down is visualization logic
+  ****************
+  */
 
-/*
-****************
-End User Customization Section
-Everything from here down is visualization logic
-****************
-*/
+  var dataLookup = {}; //this will contain the results from Zoomdata
 
-var dataLookup = {}; //this will contain the results from Zoomdata
+  // create a div for the map and add the leaflet map
+  var uuid = new Date().getTime();
+  var mapId = 'map-' + uuid;
 
-// create a div for the map and add the leaflet map
-var uuid = new Date().getTime();
-var mapId = 'map-' + uuid;
+  var div = $(controller.element).append('<div id="' + mapId +
+  '" style="width:100%; height:100%" />').find(mapId).first();
 
-var div = $(controller.element).append('<div id="' + mapId +
-'" style="width:100%; height:100%" />').find(mapId).first();
+  $(div).addClass('map');
 
-$(div).addClass('map');
+  var maxBounds = new L.LatLngBounds(
+    new L.LatLng(userVariables.bounds.northEast.lat, userVariables.bounds.northEast.lon),
+    new L.LatLng(userVariables.bounds.southWest.lat, userVariables.bounds.southWest.lon)
+  );
 
-if(map !== undefined) {console.log('Map exists ', map);}
-var map = L.map('map-' + uuid).setView(userVariables.initialExtent.centerPoint,
-                                       userVariables.initialExtent.zoomLevel);
+  if(map !== undefined) {console.log('Map exists ', map);}
+  var map = L.map('map-' + uuid, {
+      maxBounds: maxBounds,
+      minZoom: userVariables.bounds.minZoom
+  }).setView(userVariables.initialExtent.centerPoint,
+                                         userVariables.initialExtent.zoomLevel);
 
-userVariables.tileLayer.addTo(map);
+  var tileLayer = L.tileLayer.provider(userVariables.tileLayer.provider); //TODO: need to handle non-provider supported tile layers
+  tileLayer.addTo(map);
 
-// Used when the view changes (zooming) to detect what region set to use
-function regionInZoomRange(region) {
-    var result = false;
-    var zoomLevel = map.getZoom();
-    var minZoomLevel = region.minZoomLevel || 0;
-    var maxZoomLevel = region.maxZoomLevel || 18; //18 is the default max zoom for leaflet TileLayer
-    if(zoomLevel >= minZoomLevel && zoomLevel <= maxZoomLevel) {
-        result = true;
-    }
-    return(result);
-}
+  // Used when the view changes (zooming) to detect what region set to use
+  function regionInZoomRange(region) {
+      var result = false;
+      var zoomLevel = map.getZoom();
+      var minZoomLevel = region.minZoomLevel || 0;
+      var maxZoomLevel = region.maxZoomLevel || 18; //18 is the default max zoom for leaflet TileLayer
+      if(zoomLevel >= minZoomLevel && zoomLevel <= maxZoomLevel) {
+          result = true;
+      }
+      return(result);
+  }
 
-// Given a zoom level set the currently visible layer
-//and associated grouping in Zoomdata query
-//TODO: filtering based on parent layer in view, like we do with states
-function setCurrentLayer() {
-    userVariables.regionsConfig.forEach(function(currRegion) {
-        if(regionInZoomRange(currRegion)) {
-            if(!currRegion.visible) {
-                currRegion.visible = true;
-                currRegion.mapLayer.addTo(map);
-                var currGroup = controller.dataAccessors.region.getGroup();
-                currGroup.name = currRegion.groupName;
-                currGroup.limit = currRegion.regionData.features.length;
-                controller.dataAccessors.region.setGroup((currRegion.groupName, currGroup));
-            }
-        } else {
-            map.removeLayer(currRegion.mapLayer);
-            currRegion.visible = false;
-        }
-    });
-}
+  // Given a zoom level set the currently visible layer
+  //and associated grouping in Zoomdata query
+  //TODO: filtering based on parent layer in view, like we do with states
+  function setCurrentLayer() {
 
-function getVisibleLayer() {
-    var result = userVariables.regionsConfig.find(function(currRegion) {
-        if(currRegion.visible === undefined) {
-            return false;
-        }
-        return currRegion.visible;
-    });
-    return result;
-}
+      userVariables.regionsConfig.forEach(function(currRegion) {
+          if(regionInZoomRange(currRegion)) {
+              if(!currRegion.visible) {
+                  currRegion.visible = true;
+                  currRegion.mapLayer.addTo(map);
+                  var currGroup = controller.dataAccessors.region.getGroup();
+                  currGroup.name = currRegion.groupName;
+                  currGroup.limit = currRegion.numFeatures,
+                  controller.dataAccessors.region.setGroup((currRegion.groupName, currGroup));
+              }
+          } else {
+              map.removeLayer(currRegion.mapLayer);
+              currRegion.visible = false;
+          }
+      });
+  }
 
-function getMetrics()  {
-    var dataAccessors = controller.dataAccessors;
-    var metrics = {};
+  function getVisibleLayer() {
+      var result = userVariables.regionsConfig.find(function(currRegion) {
+          if(currRegion.visible === undefined) {
+              return false;
+          }
+          return currRegion.visible;
+      });
+      return result;
+  }
 
-    _.forOwn(dataAccessors, function(value, key) {
-        if (value.TYPE === value.TYPES.METRIC ||
-            value.TYPE === value.TYPES.MULTI_METRIC) {
-            metrics[key] = value;
-        }
-    });
+  function getMetrics()  {
+      var dataAccessors = controller.dataAccessors;
+      var metrics = {};
 
-    return metrics;
-}
+      _.forOwn(dataAccessors, function(value, key) {
+          if (value.TYPE === value.TYPES.METRIC ||
+              value.TYPE === value.TYPES.MULTI_METRIC) {
+              metrics[key] = value;
+          }
+      });
 
-function style(feature) {
-    var id;
-    var fillColor = 'rgb(245,245,245)'; //default to light grey
+      return metrics;
+  }
 
-    //Figure out which variable to use for the rendering
-    for(var i=0; i < userVariables.regionsConfig.length; i++) {
-        currRegion = userVariables.regionsConfig[i];
-        if(feature.properties[currRegion.regionField] !== undefined) {
-            id = feature.properties[currRegion.regionField];
-            break;
-        }
-    }
+  function style(feature) {
+      var id;
+      var fillColor = 'rgb(245,245,245)'; //default to light grey
 
-    if (dataLookup && id in dataLookup) {
-        fillColor = getMetrics().Color.color(dataLookup[id]);
-    }
-    
-    //style depends on shape.  For lines we don't have a fill, just border.  Points
-    //are circles, so they are treated same as polygons
-    switch(feature.geometry.type) {
-    case 'LineString':
-    case 'MultiLineString':
-        var sym = {
-            weight: 3,
-            opacity: 1,
-            color: fillColor,
-        };
-        break;
-    default:
-        var sym = {
-            weight: 2,
-            opacity: 1,
-            color: 'white',
-            dashArray: '3',
-            fillOpacity: 0.7,
-            fillColor: fillColor
-        };
-        break;
-    }
-    
-    return sym;
-}
+      //Figure out which variable to use for the rendering
+      for(var i=0; i < userVariables.regionsConfig.length; i++) {
+          currRegion = userVariables.regionsConfig[i];
+          if(feature.properties[currRegion.regionField] !== undefined) {
+              id = feature.properties[currRegion.regionField];
+              break;
+          }
+      }
+
+      if (dataLookup && id in dataLookup) {
+          fillColor = getMetrics().Color.color(dataLookup[id]);
+      }
+
+      //style depends on shape.  For lines we don't have a fill, just border.  Points
+      //are circles, so they are treated same as polygons
+      switch(feature.geometry.type) {
+      case 'LineString':
+      case 'MultiLineString':
+          var sym = {
+              weight: 3,
+              opacity: 1,
+              color: fillColor,
+          };
+          break;
+      default:
+          var sym = {
+              weight: 2,
+              opacity: 1,
+              color: 'white',
+              dashArray: '3',
+              fillOpacity: 0.7,
+              fillColor: fillColor
+          };
+          break;
+      }
+
+      return sym;
+  }
 
 
 
-function createCustomRegionLayers(customRegions, map, style) {
-    //Note, we are assuming that all features in a geojson are same type - not
-    //mixing points with polygons, etc.
-    customRegions.forEach(function(region) {
-        //handle each shape type appropriately
-        switch(region.regionData.features[0].geometry.type) {
-        case 'Polygon':
-        case 'MultiPolygon':
-            region.mapLayer = L.geoJson(region.regionData, {
-                style: style,
-                onEachFeature: onEachFeature
-            });
-            break;
-        case 'Point':
-        case 'MultiPoint':
-            region.mapLayer = L.geoJson(region.regionData, {
-                pointToLayer: function(feature, latlng) {
-                    return L.circleMarker(latlng, style);
-                },
-                style: style,
-                onEachFeature:onEachFeature
-            });
-            break;
-        case 'LineString':
-        case 'MultiLineString':
-            region.mapLayer = L.geoJson(region.regionData, {
-                style: style,
-                onEachFeature: onEachFeature
-            });
-            break;
-        }
-    });
-}
+  function createCustomRegionLayers(regions, map, style) {
+      //Note, we are assuming that all features in a geojson are same type - not
+      //mixing points with polygons, etc.
+      regions.forEach(function(region) {
+console.log('Adding region:', region);
+          //handle each shape type appropriately
+          switch(window[region.regionData].features[0].geometry.type) {
+          case 'Polygon':
+          case 'MultiPolygon':
+              //if the map data is in TopoJSON we do a little special handling to generate the layer
+              //Just doing a simple test to detect if it is a GeoJSON.  TopoJSON doesn't have
+              //any easy identifiers.  Hopefully this works for all GeoJSON cases
+              var shapes;
+              if(window[region.regionData].type !== 'undefined' && window[region.regionData].type === 'FeatureCollection') {
+                  shapes = window[region.regionData];
+              } else {
+                  shapes = omnivore.topojson(window[region.regionData]);
+              }
+              region.mapLayer = L.geoJson(shapes, {
+                  style: style,
+                  onEachFeature: onEachFeature
+              });
+              break;
+          case 'Point':
+          case 'MultiPoint':
+              region.mapLayer = L.geoJson(window[region.regionData], {
+                  pointToLayer: function(feature, latlng) {
+                      return L.circleMarker(latlng, style);
+                  },
+                  style: style,
+                  onEachFeature:onEachFeature
+              });
+              break;
+          case 'LineString':
+          case 'MultiLineString':
+              region.mapLayer = L.geoJson(window[region.regionData], {
+                  style: style,
+                  onEachFeature: onEachFeature
+              });
+              break;
+          }
+          //we use the number of features in the layer as the limit for the query to ZD
+          region.numFeatures = window[region.regionData].features.length;
+      });
+  }
 
-createCustomRegionLayers(userVariables.regionsConfig, map, style);
-setCurrentLayer();
+  createCustomRegionLayers(userVariables.regionsConfig, map, style);
+  setCurrentLayer();
 
-map.on('moveend', function(e) {
-    //console.log('map moved, ', e);
-});
+  map.on('moveend', function(e) {
+      //console.log('map moved, ', e);
+  });
 
-map.on('zoomend', function(e) {
-    setCurrentLayer();
-});
+  map.on('zoomend', function(e) {
+      setCurrentLayer();
+  });
 
-function highlightFeature(e) {
-    var layer = e.target;
-    var feature = e.target.feature;
-    layer.setStyle({
-        weight: 5,
-        color: '#666',
-        dashArray: '',
-        fillOpacity: 0.7
-    });
+  function highlightFeature(e) {
+      var layer = e.target;
+      var feature = e.target.feature;
+      layer.setStyle({
+          weight: 5,
+          color: '#666',
+          dashArray: '',
+          fillOpacity: 0.7
+      });
 
-    if (!L.Browser.ie && !L.Browser.opera) {
-        layer.bringToFront();
-    }
+      if (!L.Browser.ie && !L.Browser.opera) {
+          layer.bringToFront();
+      }
 
-    currRegion = getVisibleLayer();
-    featureId = feature.properties[currRegion.regionField];
-    if (!(featureId in dataLookup)) {
-        return;
-    }
+      currRegion = getVisibleLayer();
+      featureId = feature.properties[currRegion.regionField];
+      if (!(featureId in dataLookup)) {
+          return;
+      }
 
-    var data = dataLookup[featureId];
-    controller.tooltip.show({
-        event: e.originalEvent,
-        data: function() {
-            return data;
-        },
-        color: function() {
-            if (!(featureId in dataLookup)) {
-                return;
-            }
-            return getMetrics().Color.color(dataLookup[featureId]);
-        }
-    });
-}
+      var data = dataLookup[featureId];
+      controller.tooltip.show({
+          event: e.originalEvent,
+          data: function() {
+              return data;
+          },
+          color: function() {
+              if (!(featureId in dataLookup)) {
+                  return;
+              }
+              return getMetrics().Color.color(dataLookup[featureId]);
+          }
+      });
+  }
 
-function resetHighlight(e) {
-    getVisibleLayer().mapLayer.resetStyle(e.target);
-    controller.tooltip.hide();
-}
+  function resetHighlight(e) {
+      getVisibleLayer().mapLayer.resetStyle(e.target);
+      controller.tooltip.hide();
+  }
 
-function featureDetails(e) {
-    var feature = e.target.feature;
+  function featureDetails(e) {
+      var feature = e.target.feature;
 
-    if (!(currRegion.regionField in dataLookup)) {
-        return;
-    }
+      if (!(currRegion.regionField in dataLookup)) {
+          return;
+      }
 
-    controller.menu.show({
-        event: e.originalEvent,
-        data: function() {
-            return dataLookup[currRegion.regionField];
-        }
-    });
-}
+      controller.menu.show({
+          event: e.originalEvent,
+          data: function() {
+              return dataLookup[currRegion.regionField];
+          }
+      });
+  }
 
-function onEachFeature(feature, layer) {
-    layer.on({
-        mousemove: highlightFeature,
-        mouseout: resetHighlight,
-        click: featureDetails
-    });
-}
+  function onEachFeature(feature, layer) {
+      layer.on({
+          mousemove: highlightFeature,
+          mouseout: resetHighlight,
+          click: featureDetails
+      });
+  }
 
-// Functions specific to the Zoomdata custom visualization
-controller.selection = function(selected) {
-    if (selected) {
-        map.dragging.enable();
-        map.touchZoom.enable();
-        map.scrollWheelZoom.enable();
-        map.doubleClickZoom.enable();
-        map.boxZoom.enable();
-    } else {
-        map.dragging.disable();
-        map.touchZoom.disable();
-        map.scrollWheelZoom.disable();
-        map.doubleClickZoom.disable();
-        map.boxZoom.disable();
-    }
-};
+  // Functions specific to the Zoomdata custom visualization
+  controller.selection = function(selected) {
+      if (selected) {
+          map.dragging.enable();
+          map.touchZoom.enable();
+          map.scrollWheelZoom.enable();
+          map.doubleClickZoom.enable();
+          map.boxZoom.enable();
+      } else {
+          map.dragging.disable();
+          map.touchZoom.disable();
+          map.scrollWheelZoom.disable();
+          map.doubleClickZoom.disable();
+          map.boxZoom.disable();
+      }
+  };
 
-controller.update = function(data, progress) {
-    // Called when new data arrives
-    dataLookup = {};
-    for (var i = 0; i < data.length; i++) {
-        var item = data[i];
-        dataLookup[item.group] = item;
-    }
+  controller.update = function(data, progress) {
+      // Called when new data arrives
+      dataLookup = {};
+      for (var i = 0; i < data.length; i++) {
+          var item = data[i];
+          dataLookup[item.group] = item;
+      }
 
-    userVariables.regionsConfig.forEach(function(region) {
-        if(region.mapLayer !== undefined) {
-//here is the problem, setting style initially to wrong type
-            region.mapLayer.setStyle(style);
-        }
-    });
-};
+      userVariables.regionsConfig.forEach(function(region) {
+          if(region.mapLayer !== undefined) {
+  //here is the problem, setting style initially to wrong type
+              region.mapLayer.setStyle(style);
+          }
+      });
+  };
 
-controller.resize = function(width, height, size) {
-    // Called when the widget is resized
-    map.invalidateSize();
-};
+  controller.resize = function(width, height, size) {
+      // Called when the widget is resized
+      map.invalidateSize();
+  };
 
-controller.createAxisLabel({
-    picks: 'Color',
-    orientation: 'horizontal',
-    position: 'bottom',
-    popoverTitle: 'Color'
-});
+  controller.createAxisLabel({
+      picks: 'Color',
+      orientation: 'horizontal',
+      position: 'bottom',
+      popoverTitle: 'Color'
+  });
 }());
