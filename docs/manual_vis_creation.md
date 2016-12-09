@@ -28,6 +28,9 @@ Repeat the process for "test_region_level2.js" and "test_region_level3.js"
 In the "Manage Libraries" dialog drag all three of the newly added libraries from the bottom of the list (Scroll down) to the top section.  Click "Accept" when downloaded
 
 Click the "Manage" button, select "Variables"
+Rename the 'Group' variable to 'region'
+Delete the other variable
+Leave the color variable, need that
 
 On the "Query" tab change the name of the "State" variable to "region"
 
