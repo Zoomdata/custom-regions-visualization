@@ -1,5 +1,6 @@
 /*
  * Copyright (C) Zoomdata, Inc. 2012-2016. All rights reserved.
+ * Custom Regions map chart version 0.0.2
  */
 /* global controller */
 
