@@ -36,7 +36,7 @@
     console.error(validationResult.message);
     console.error('configuration variable:', userVariables);
   }
-
+console.log('Incoming configuration:', userVariables);
   //Example setting the tile server parameters manually, in this case for OpenStreetMap Mapnik
   //userVariables.tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   //	maxZoom: 19,
@@ -183,45 +183,49 @@
       //Note, we are assuming that all features in a geojson are same type - not
       //mixing points with polygons, etc.
       regions.forEach(function(region) {
-console.log('Adding region:', region);
-          //handle each shape type appropriately
-          switch(window[region.regionData].features[0].geometry.type) {
-          case 'Polygon':
-          case 'MultiPolygon':
-              //if the map data is in TopoJSON we do a little special handling to generate the layer
-              //Just doing a simple test to detect if it is a GeoJSON.  TopoJSON doesn't have
-              //any easy identifiers.  Hopefully this works for all GeoJSON cases
-              var shapes;
-              if(window[region.regionData].type !== 'undefined' && window[region.regionData].type === 'FeatureCollection') {
-                  shapes = window[region.regionData];
-              } else {
-                  shapes = omnivore.topojson(window[region.regionData]);
-              }
-              region.mapLayer = L.geoJson(shapes, {
-                  style: style,
-                  onEachFeature: onEachFeature
-              });
-              break;
-          case 'Point':
-          case 'MultiPoint':
-              region.mapLayer = L.geoJson(window[region.regionData], {
-                  pointToLayer: function(feature, latlng) {
-                      return L.circleMarker(latlng, style);
-                  },
-                  style: style,
-                  onEachFeature:onEachFeature
-              });
-              break;
-          case 'LineString':
-          case 'MultiLineString':
-              region.mapLayer = L.geoJson(window[region.regionData], {
-                  style: style,
-                  onEachFeature: onEachFeature
-              });
-              break;
-          }
-          //we use the number of features in the layer as the limit for the query to ZD
-          region.numFeatures = window[region.regionData].features.length;
+console.log('creating region:', window[region.regionData]);
+            //Handle geojson different from topojson
+          switch(window[region.regionData].type) {
+              case 'FeatureCollection':
+                  console.log('geojson')
+                  switch(window[region.regionData].features[0].geometry.type) {
+                  case 'Polygon':
+                  case 'MultiPolygon':
+                      region.mapLayer = L.geoJson(window[region.regionData], {
+                          style: style,
+                          onEachFeature: onEachFeature
+                      });
+                      break;
+                  case 'Point':
+                  case 'MultiPoint':
+                      region.mapLayer = L.geoJson(window[region.regionData], {
+                          pointToLayer: function(feature, latlng) {
+                              return L.circleMarker(latlng, style);
+                          },
+                          style: style,
+                          onEachFeature:onEachFeature
+                      });
+                      break;
+                  case 'LineString':
+                  case 'MultiLineString':
+                      region.mapLayer = L.geoJson(window[region.regionData], {
+                          style: style,
+                          onEachFeature: onEachFeature
+                      });
+                      break;
+                  }
+                   //we use the number of features in the layer as the limit for the query to ZD
+                    region.numFeatures = window[region.regionData].features.length;
+                  break;
+                case 'Topology':
+                    console.log('topojson');
+                    region.mapLayer = L.geoJson(omnivore.topojson.parse(window[region.regionData]), {
+                          style: style,
+                          onEachFeature: onEachFeature
+                      });
+                      region.numFeatures = region.mapLayer.getLayers().length;
+                    break;
+        }
       });
   }
 

@@ -21,7 +21,7 @@
         "order": 1,
         "uploadDate": "2016-10-06 18:51:36.131"
     }],
-    "libs": ["lodash.min.js", "leaflet.js", "leaflet-omnivore.min.js", "topojson.js", "geojson-utils.js", "d3.v3.min.js", "test_region_level3.js", "test_region_level2.js", "test_region_level1.js"],
+    "libs": ["lodash.min.js", "leaflet.js", "leaflet-omnivore.min.js", "topojson.js", "geojson-utils.js", "d3.v3.min.js", "test_region_level3.js", "test_region_level2.js", "test_region_level1.js", "us-states.js", "us-zipcodes.js"],
     "objectFieldTypes": ["NUMBER", "MONEY", "ATTRIBUTE", "INTEGER"],
     "controls": ["TimeControl", "UberStyle", "DirtyDataIndicator", "Color", "FiltersIndicator", "Undo", "Info", "TimePlayer", "Filters", "Defaults", "Bookmark", "NoDataIndicator", "TimeTable", "Share", "Download"],
     "variables": [{
