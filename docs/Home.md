@@ -7,11 +7,11 @@ You need:
 * An account in Zoomdata with membership in the Administrators group, so you can access data source configuration and chart Studio
 * The custom_regions.zip file, which contains the custom chart export from Zoomdata
 * Download this repository to your local workstation
-* To customize the visualization you need one or more GeoJSON files with your spatial data _(at this time TopoJSON is not supported)_.  Each shape must have a property containing some name or other identifier
+* To customize the visualization you need one or more GeoJSON or TopoJSON files with your spatial data.  Each shape must have a property containing some name or other identifier
 
-**Note, the visualization supports GeoJSON with polygons (regions), points, and lines.  All features in a single GeoJSON source must have the same geometry type (don't mix points and polygons, etc)**
+**Note, the visualization supports GeoJSON with polygons (regions), points, and lines, and TopoJSON with polygons.  All features in a single file must have the same geometry type (don't mix points and polygons, etc)**
 * A data source that has an attribute containing the same names as the property in the GeoJSON; the data source should already be configured in Zoomdata
-* Enough understanding of Javascript to be able to edit the code as described in this document; some knowledge of how to debug Javascript in the browser console
+* Enough understanding of Javascript to be able to edit the code using Chart Studio in Zoomdata; some knowledge of how to debug Javascript in the browser console
 
 ## Installation
 
@@ -38,6 +38,7 @@ The custom visualization in this repository is configured with a set of test pol
 * Click "Next", then "Next" again on the field configuration page
 * On the Charts configuration page click the "Custom" tab on the left panel and select the custom visualization added previously
 * In the chart configuration set the default fields.  In particular, configure the color palette/range you want to use (other values will be overridden in later configuration)
+* Finally, for the magic step, open the [sample_data/custom_regions_config_hierarchy-regions.json](sample_data/custom_regions_config_hierarchy-regions.json) file in a text editor, select all text, and copy it to the clipboard.  In Zoomdata paste the text into the "Map Configuration" box.  It is a single line text box, but accepts multi-line data. We'll talk details of this file later.
 * Click 'Finish'
 
 ### View the Chart
@@ -54,7 +55,11 @@ Once you have the map working with a data source and the appropriate polygons th
 
 ## Multiple Custom Region Visualizations
 
-You can have multiple custom regions charts, each with a different set of regions or data source configurations.  Repeat the installation/import and customization process to tailor a new chart to a different set of parameters.  
+You can have multiple custom regions charts, each with a different set of regions or data source configurations.  If you have data sets that are using the same set of GeoJSON/TopoJSON regions then you can set the Map Configuration variable in the data source chart configuration.
+
+If you have different regions then you have a couple of options:
+* Add the map data as additional libraries to the same custom visualization.  The risk here is that, if the files are large, it could slow down the loading and rendering of the map
+* Create a new custom visualization with those specific map files.  Repeat the installation/import and customization process to tailor a new chart to a different set of parameters.  
 
 ## Different Data Sources
 One custom_regions chart that is loaded can be used against multiple data sources in Zoomdata, provided those data sources have the same field configuration for the region ID.  For example, one table contains sales_value while a different table tracks site_visits; both tables have a field named 'sales_region' with the same set of region names.  Both of these sources can have the newly added visualization associated with them.

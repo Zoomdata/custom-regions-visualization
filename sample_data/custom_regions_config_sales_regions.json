@@ -1,0 +1,25 @@
+{
+    "initialExtent": {
+        "centerPoint": {"lat": 37.8,"lon": -96 },
+        "zoomLevel": 4
+    },
+    "bounds": {
+        "northEast": {"lat": 50.26,"lon": -126.19 },
+        "southWest": {"lat": 23.87,"lon": -66.66 },
+        "minZoom": 4
+    },
+    "tileLayer": {
+        "provider": "OpenStreetMap.BlackAndWhite"
+    },
+    "regionsConfig": [{
+        "regionData": "sales_areas",
+        "groupName": "sales_region_1",
+        "regionField": "name",
+        "maxZoomLevel": 5
+    },{
+      "regionData": "states",
+      "groupName": "state2",
+      "regionField": "STATE_2",
+      "minZoomLevel": 6
+    }]
+}

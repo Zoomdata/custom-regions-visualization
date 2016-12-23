@@ -12,111 +12,53 @@ These instructions guide you through changing the configuration of the custom re
 * Back in the 'Manage Libraries' dialog scroll down to the end and find "us_sales_areas.js"; drag the file up to the 'Included Libraries' section at the top.  Repeat for "gadm_us_states_simplified.js"
 * Click 'Accept'
 
-Now you need to set the map configuration to link the data to the new polygon files.  The configuration defined in the 'userVariables' object sets the parameters for the map.  The `userVariables` parameters are all at the top of the `CustomRegionsMap.js` file.  The sample code as uploaded centers on the USA, uses OpenStreetMap, and has 3 layers of map data specified.
+Now you need to set the map configuration to link the data to the new polygon files.  The configuration is defined as a JSON formatted string that is pasted into one of the chart variables in the data source chart configuration page.
 
-* In chart studio make sure "CustomRegionsMap.js" is open in the code editor
-* Locate the `userVariables.regionsConfig = [{` (around line 36)
-* Highlight all of that variable declaration, about 25 lines, and delete
-* Paste the following code in the location of the deleted lines
-```
-userVariables.regionsConfig = [{
-  regionData = sales_areas,
-  groupName = 'sales_regions',
-  regionField = 'name',
-  maxZoomLevel = 5
-},{
-  regionData = states,
-  groupName = 'State',
-  regionField = "STATE_2",
-  minZoomLevel = 6
-}];
-```
-This block re-defines the map layers.  Our test data source already has columns to support the new regions, so we don't need to change the data source.  The first array object says our polygons come from the "sales_areas" object, which is defined in the "us_sales_areas.js" library loaded above; the polygons in that file have a "name" property, which is assigned to the "regionField" member.  The data source has the corresponding values in the "sales_regions", so we assign that filed name to the "groupName" member.  Finally we specify a "maxZoomLevel" of 5, after the user zooms in 5 levels this layer will disappear.  Since we did not set a "minZoomLevel" this layer is visible all the way out to the global level.
+* In a text editor open [sample_data/custom_regions_config_sales_regions.json](/sample_data/custom_regions_config_sales_regions.json).  Select all and copy to the clipboard
+* In Zoomdata open the Sources page and click on the "Custom Regions Test" data source
+* Select the last tab, "Charts" and select the tab for "Custom"
+* Click on the "Custom Regions" chart and scroll to the bottom of the configuration page
+* Paste the clipboard contents into the "Map Configuration" field.  The text box will accept multiple lines, but they won't be formatted very nice
+* Click "Save"
+
+Now when you view the chart in Zoomdata it shows a set of notional sales regions when you are zoomed out.  As you zoom in it changes to states.  Also note that you can't zoom out past a certain point, the view stays over the contiguous United States.
+
+Our test data source already has columns to support the new regions, so we don't need to change the data source.'
+
+The JSON text you pasted in to the Map Configuration contains all of the configuration elements to make the map represent a new set of data and some map parameters to set the view.  The `initialExtent`, `bounds`, and `tileLayer` set some parameters for the map to center on the contiguous US and use OpenStreetMap for the background.
+
+The `regionsConfig` array object says our polygons come from the "sales_areas" object, which is defined in the "us_sales_areas.js" library loaded above; the polygons in that file have a "name" property, which is assigned to the "regionField" member.  The data source has the corresponding values in the "sales_regions", so we assign that filed name to the "groupName" member.  Finally we specify a "maxZoomLevel" of 5, after the user zooms in 5 levels this layer will disappear.  Since we did not set a "minZoomLevel" this layer is visible all the way out to the global level.
 
 Similarly, we set a second layer to be shown when the user zooms in to level 6 and lower.  This matches the states polygons to the State field in the data.
 
 # Next Steps
 
-Now you are ready to use your own polygons and data.  Note that your GeoJSON data must be assigned to a javascript variable by adding `var variableName =` at the start of the file. Then upload the file to the libraries set of the custom visualization.
+Now you are ready to use your own polygons and data.  Note that your GeoJSON data must be assigned to a javascript variable by adding `var variableName =` at the start of the file. See [the instructions for creating a GeoJSON or TopoJSON file[(./creating_geojson.md).  Upload your file to the libraries set of the custom visualization.
 
-The `regionsConfig` object contains one or more definitions for a region.  You must define at least one region.
+Next, create a new configuration JSON string to connect your map data to the data in Zoomdata.  Use a text editor to create the string, then paste it into the Map Configuration field in the data source configuration.  There are 4 main blocks in the configuration file:
+
+*initialExtent* sets a location for the initial view.  In this case when the user opens the map it will be centered on the contiguous United States.  By modifying the coordinates and zoom level you can have the map initially show any location.  For example:
+
+```
+"initialExtent": "{centerPoint: {lat:53.87, lon:15.55}, zoomLevel: 4};
+```
+
+Would center on Europe.  Or, if our date is in Australia, we could use:
+
+```
+"initialExtent": { "centerPoint": {"lat": -24.0,"lon":134.0 },"zoomLevel": 4}
+```
+
+The syntax is described in the setView method of the Leaflet documentation for the [map class](http://leafletjs.com/reference.html#map-class)
+
+*bounds* sets the max extent for the map, which prevents the user from zooming out too far or panning the map outside of the area of interest.  If this parameter is left out then the user will be able to zoom out to a global view (and beyond, which looks a bit strange), and pan to any location on the map.  These variables are used when initializing the Leaflet map, setting the `minZoom` and `maxExtent` options.
+
+*tileLayer* sets your preferred base map service. Any base map service compatible with the Leaflet library can be used.  See the Leaflet [TileLayer documentation](http://leafletjs.com/reference.html#tilelayer) for specifics.  Base maps can be hosted by a provider or from an on-premise server, provided they publish the service using a protocol compatible with Leaflet.  Include any API keys from the map provider as required.
+
+*regionsConfig* is an array of objects containing one or more definitions for a region.  You must define at least one region.
 * name of the variable containing the geoJSON
 * the zoom levels to display the layer
   * `minZoomLevel` is the lowest resolution level to show this data, where 0 is global.  For example, you wouldn't want postal codes displayed for the entire world, but continental or country borders are appropriate.  Default is 0.
   * `maxZoomLevel` is the highest resolution level to show this layer, where the maximum value is defined by the tile layer you specified previously.  The lowest level is usually neighborhood or local street level.  Defaults to the maximum zoom level supported by the tile server
 * name of the  property in the GeoJSON containing the shape name/id
 * name of the attribute in Zoomdata for the group corresponding to the data
-
-You can customize the `userVariables.initialExtent` values as appropriate for your data; there are a couple of examples commented in the code.  If your dataset is not centered over the U.S. then you should change these values so the map shows a relevant location when it first comes up.  The syntax is described in the setView method of the Leaflet documentation for the [map class](http://leafletjs.com/reference.html#map-class)
-
-You can also set your preferred base map service. Any base map service compatible with the Leaflet library can be used.  See the Leaflet [TileLayer documentation](http://leafletjs.com/reference.html#tilelayer) for specifics.  Base maps can be hosted by a provider or from an on-premise server, provided they publish the service using a protocol compatible with Leaflet.  Include any API keys from the map provider as required.
-
-# User Configuration Object
-Here is the userVariables object, as provided in the custom_regions sample:
-
-```
-#!javascript
-var userVariables = {};
-//Set the initial map extent.  This is what part of the world will be shown
-//when the user first opens the visualization.  The extent consists of a
-//center point lat/lon and a zoom level.  Zoom level is an integer between 0 and X, where
-//0 is the whole world and X is the most detailed level as defined by the tile layer selected
-//Some examples:
-// United States (contiguous):
-userVariables.initialExtent = {centerPoint: {lat:37.8, lon:-96}, zoomLevel: 4};
-// Europe:
-//userVariables.initialExtent = {centerPoint: {lat:53.87, lon:15.55}, zoomLevel: 4};
-// Australia:
-//userVariables.initialExtent = {centerPoint: {lat: -25.08, lon: 134.26}, zoomLevel: 4};
-
-
-//Specify the tile layer to show in the background of the map using either the
-//provider from leaflet-extras or by setting the parameters yourself
-
-//Using leaflet provider, as described at https://github.com/leaflet-extras/leaflet-providers
-userVariables.tileLayer = L.tileLayer.provider('OpenStreetMap.BlackAndWhite');
-
-//Example setting the parameters manually, in this case for OpenStreetMap Mapnik
-//userVariables.tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-//	maxZoom: 19,
-//	attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-//});
-
-//Load and configure the regions to use for data display.  Regions must be in
-//GeoJSON format.  Multiple regions can be set to show data at different zoom
-//levels with different join fields.  This array must contain at least one element.
-userVariables.regionsConfig = [{
-    //The geoJSON containing the regions.  You _could_ put the whole geoJSON payload
-    //here, but that might make things a bit difficult to read
-    regionData: test_region_level1,
-    //The chart needs 2 fields to render the data.  First, the field in the data
-    //source containing the region name/id
-    groupName: 'region_name1',
-    //next, the name of the field in the geoJSON containing the same name/id
-    regionField: 'name_1',
-    //optionally you can set the min/max zoom levels for this layer
-    //minZoomLevel not set, so will be shown out to global
-    //if zoom levels overlap only the first one hit will be shown
-    maxZoomLevel: 4 //won't show when zoomed in past level 10
-},{
-    regionData: test_region_level2,
-    groupName: 'region_name2',
-    regionField: 'name_2',
-    minZoomLevel: 5,
-    maxZoomLevel: 7
-},{
-    regionData: test_region_level3,
-    groupName: 'region_name3',
-    regionField: 'name_3',
-    minZoomLevel: 8
-    //maxZoomLevel not set, so will be shown all the way to most detailed
-}];
-
-/*
-****************
-End User Customization Section
-Everything from here down is visualization logic
-****************
-*/
-
-```

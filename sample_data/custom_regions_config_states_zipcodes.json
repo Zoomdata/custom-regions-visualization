@@ -1,0 +1,25 @@
+{
+    "initialExtent": {
+        "centerPoint": {"lat": 37.8,"lon": -96 },
+        "zoomLevel": 4
+    },
+    "bounds": {
+        "northEast": {"lat": 50.26,"lon": -126.19 },
+        "southWest": {"lat": 23.87,"lon": -66.66 },
+        "minZoom": 4
+    },
+    "tileLayer": {
+        "provider": "OpenStreetMap.BlackAndWhite"
+    },
+    "regionsConfig": [{
+        "regionData": "states_lower",
+        "groupName": "state",
+        "regionField": "state_lower",
+        "maxZoomLevel": 9
+    },{
+        "regionData": "zipcodesTopo",
+        "groupName": "postal_code",
+        "regionField": "ZCTA5CE10",
+        "minZoomLevel": 10
+    }]
+}
