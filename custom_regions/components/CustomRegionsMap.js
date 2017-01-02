@@ -89,26 +89,50 @@ console.log('Incoming configuration:', userVariables);
       return(result);
   }
 
+    function setLayerFilter() {
+/*        userVariables.regionsConfig.forEach(function(currRegion) {
+            if(currRegion.visible) {
+                //whether it is newly visible or not we need to re-calc the filter list
+                //in case the user panned/zoomed
+                controller.query.filters.removeFilters(currRegion.filter);
+                var newFilter = [];
+                currRegion.mapLayer.eachLayer(function(l) {
+                    console.log('Checking if ', l.getBounds(), 'is in', map.getBounds(), ' for feature', l);
+                    if( map.getBounds().intersects(l.getBounds()) ) {
+                        newFilter.push(l.feature.properties[currRegion.regionField]);
+                    }
+                });
+                console.log('Created filter with ' , newFilter.length, ' ' , currRegion.regionField);
+                currRegion.filter = {
+                    path: currRegion.groupName,
+                    value: newFilter,
+                    operation: 'IN'
+                }
+                controller.query.filters.addFilters(currRegion.filter);
+            }
+        });*/
+    }
+
   // Given a zoom level set the currently visible layer
   //and associated grouping in Zoomdata query
-  //TODO: filtering based on parent layer in view, like we do with states
   function setCurrentLayer() {
 
-      userVariables.regionsConfig.forEach(function(currRegion) {
-          if(regionInZoomRange(currRegion)) {
-              if(!currRegion.visible) {
-                  currRegion.visible = true;
-                  currRegion.mapLayer.addTo(map);
-                  var currGroup = controller.dataAccessors.region.getGroup();
-                  currGroup.name = currRegion.groupName;
-                  currGroup.limit = currRegion.numFeatures,
-                  controller.dataAccessors.region.setGroup((currRegion.groupName, currGroup));
-              }
-          } else {
-              map.removeLayer(currRegion.mapLayer);
-              currRegion.visible = false;
-          }
-      });
+    userVariables.regionsConfig.forEach(function(currRegion) {
+        if(regionInZoomRange(currRegion)) {
+            if(!currRegion.visible) {
+                currRegion.visible = true;
+                currRegion.mapLayer.addTo(map);
+                var currGroup = controller.dataAccessors.region.getGroup();
+                currGroup.name = currRegion.groupName;
+                currGroup.limit = currRegion.numFeatures,
+                controller.dataAccessors.region.setGroup((currRegion.groupName, currGroup));
+            }
+        } else {
+            map.removeLayer(currRegion.mapLayer);
+            currRegion.visible = false;
+            controller.query.filters.removeFilters(currRegion.filter);
+        }
+    });
   }
 
   function getVisibleLayer() {
@@ -219,14 +243,15 @@ console.log('creating region:', window[region.regionData]);
                     region.numFeatures = window[region.regionData].features.length;
                   break;
                 case 'Topology':
-                    console.log('topojson');
-                    region.mapLayer = L.geoJson(omnivore.topojson.parse(window[region.regionData]), {
+                    var layer = L.geoJson(null, {
                           style: style,
                           onEachFeature: onEachFeature
-                      });
-                      region.numFeatures = region.mapLayer.getLayers().length;
+                    });
+                    region.mapLayer = omnivore.topojson.parse(window[region.regionData], {}, layer);
+                    region.numFeatures = region.mapLayer.getLayers().length;
                     break;
         }
+        region.filter = {};
       });
   }
 
@@ -234,7 +259,8 @@ console.log('creating region:', window[region.regionData]);
   setCurrentLayer();
 
   map.on('moveend', function(e) {
-      //console.log('map moved, ', e);
+      //whenever the map is moved re-calculate the filter
+      setLayerFilter();
   });
 
   map.on('zoomend', function(e) {
