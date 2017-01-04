@@ -89,34 +89,64 @@ console.log('Incoming configuration:', userVariables);
       return(result);
   }
 
-    function setLayerFilter() {
-/*        userVariables.regionsConfig.forEach(function(currRegion) {
-            if(currRegion.visible) {
-                //whether it is newly visible or not we need to re-calc the filter list
-                //in case the user panned/zoomed
-                controller.query.filters.removeFilters(currRegion.filter);
-                var newFilter = [];
-                currRegion.mapLayer.eachLayer(function(l) {
-                    console.log('Checking if ', l.getBounds(), 'is in', map.getBounds(), ' for feature', l);
-                    if( map.getBounds().intersects(l.getBounds()) ) {
-                        newFilter.push(l.feature.properties[currRegion.regionField]);
-                    }
-                });
-                console.log('Created filter with ' , newFilter.length, ' ' , currRegion.regionField);
-                currRegion.filter = {
-                    path: currRegion.groupName,
-                    value: newFilter,
-                    operation: 'IN'
+    function updateRegionFilter(region) {
+        var newFilter = [];
+        var badGeom = 0;
+        region.mapLayer.eachLayer(function(l) {
+            var featureBounds = l.getBounds();
+            //there seems to be an issue with multipolygons, or some issue with the way we are
+            //reducing the data or generating topojson.  The bounds for some features is coming back {}
+            try {
+                if( map.getBounds().intersects(l.getBounds()) ) {
+                    newFilter.push(l.feature.properties[region.regionField]);
                 }
-                controller.query.filters.addFilters(currRegion.filter);
+            } catch(e) {
+                badGeom++;
             }
-        });*/
+        });
+        if(badGeom > 0) console.error('Found ', badGeom, ' invalid geometries when creating dynamic filter');
+        console.log('Created filter with ' , newFilter.length, ' ' , region.regionField);
+        region.filter = {
+            path: region.groupName,
+            value: newFilter,
+            operation: 'IN'
+        }
+      }
+
+    //Assuming that if this function is called there is some change that requires
+    //a new filter.  Not checking to see if exact values are the same, just delete
+    //any filters related to the map regions and create a new one.  Need to make
+    //sure not to disturb any other filters user may have created (although if they
+    //filter on a region field then that filter will be trashed.  Don't know any
+    //way to avoid that, except not filtering - but that has other issues.  Maybe
+    //make a check box and flag that the user can set to enable/disable auto-filtering)
+    function setLayerFilter() {
+        console.log('setting dynamic filter.  Current query filters:', controller.query.filters.get());
+        var currRegion = getVisibleLayer();
+        updateRegionFilter(currRegion);
+        currFilters = controller.query.filters.get();
+        //first, if there is no filter on the query create one
+        if( currFilters.length !== 0 ) {
+            userVariables.regionsConfig.forEach(function(r) {
+                //some filter exists.  Search the list, remove any filters with
+                //path that matches a region grouping
+                var matchingFilter = currFilters.find(function(f) {
+                    var result = false;
+                    if(f.path === r.groupName) {
+                        result = true;
+                        controller.query.filters.removeFilters(f);
+                    }
+                    return result;
+                });
+            });
+        }
+        controller.query.filters.addFilters(currRegion.filter);
     }
 
   // Given a zoom level set the currently visible layer
   //and associated grouping in Zoomdata query
   function setCurrentLayer() {
-
+console.log('Setting current layer');
     userVariables.regionsConfig.forEach(function(currRegion) {
         if(regionInZoomRange(currRegion)) {
             if(!currRegion.visible) {
@@ -130,7 +160,9 @@ console.log('Incoming configuration:', userVariables);
         } else {
             map.removeLayer(currRegion.mapLayer);
             currRegion.visible = false;
-            controller.query.filters.removeFilters(currRegion.filter);
+            if(controller.query.filters.length > 0) {
+                controller.query.filters.removeFilters(currRegion.filter);
+            }
         }
     });
   }
@@ -251,7 +283,7 @@ console.log('creating region:', window[region.regionData]);
                     region.numFeatures = region.mapLayer.getLayers().length;
                     break;
         }
-        region.filter = {};
+ //       region.filter = {};
       });
   }
 
