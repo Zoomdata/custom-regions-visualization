@@ -168,6 +168,7 @@ console.log('Setting current layer');
   }
 
   function getVisibleLayer() {
+      //NOTE:  this only works for one visible layer.  If users need to have multiple layers showing simultaneously then we need to return an array or something
       var result = userVariables.regionsConfig.find(function(currRegion) {
           if(currRegion.visible === undefined) {
               return false;
@@ -194,33 +195,7 @@ console.log('Setting current layer');
   function style(feature) {
       var id;
       var fillColor = 'rgb(245,245,245)'; //default to light grey
-
-      //Figure out which variable to use for the rendering
-      for(var i=0; i < userVariables.regionsConfig.length; i++) {
-          currRegion = userVariables.regionsConfig[i];
-          if(feature.properties[currRegion.regionField] !== undefined) {
-              id = feature.properties[currRegion.regionField];
-              break;
-          }
-      }
-
-      if (dataLookup && id in dataLookup) {
-          fillColor = getMetrics().Color.color(dataLookup[id]);
-      }
-
-      //style depends on shape.  For lines we don't have a fill, just border.  Points
-      //are circles, so they are treated same as polygons
-      switch(feature.geometry.type) {
-      case 'LineString':
-      case 'MultiLineString':
-          var sym = {
-              weight: 3,
-              opacity: 1,
-              color: fillColor,
-          };
-          break;
-      default:
-          var sym = {
+      var sym = { //default Symbol
               weight: 2,
               opacity: 1,
               color: 'white',
@@ -228,9 +203,43 @@ console.log('Setting current layer');
               fillOpacity: 0.7,
               fillColor: fillColor
           };
-          break;
+var visibleRegion = userVariables.regionsConfig.find(function(currRegion) {
+  if(currRegion.visible === undefined) {
+      return false;
+  }
+  return currRegion.visible;
+});
+if(visibleRegion) {
+id = feature.properties[visibleRegion.regionField]
+
+      if (dataLookup && id in dataLookup) {
+          fillColor = getMetrics().Color.color(dataLookup[id]);
+          console.log('Found ', id, " setting fillColor to ", fillColor);
       }
 
+      //style depends on shape.  For lines we don't have a fill, just border.  Points
+      //are circles, so they are treated same as polygons
+
+      switch(feature.geometry.type) {
+      case 'LineString':
+      case 'MultiLineString':
+          sym = {
+              weight: 3,
+              opacity: 1,
+              color: fillColor,
+          };
+          break;
+      default:
+        sym = { //default Symbol
+              weight: 2,
+              opacity: 1,
+              color: 'white',
+              dashArray: '3',
+              fillOpacity: 0.7,
+              fillColor: fillColor
+          };
+      }
+}
       return sym;
   }
 
@@ -389,7 +398,6 @@ console.log('creating region:', window[region.regionData]);
 
       userVariables.regionsConfig.forEach(function(region) {
           if(region.mapLayer !== undefined) {
-  //here is the problem, setting style initially to wrong type
               region.mapLayer.setStyle(style);
           }
       });
