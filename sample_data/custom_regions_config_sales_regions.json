@@ -13,7 +13,7 @@
     },
     "regionsConfig": [{
         "regionData": "sales_areas",
-        "groupName": "sales_region_1",
+        "groupName": "sales_region",
         "regionField": "name",
         "maxZoomLevel": 5
     },{
