@@ -78,37 +78,23 @@ Polygons can be very detailed.  Since polygons in GeoJSON are represented as a l
 
 ![Lots of points](images/norway_vertices_original.png)
 
-For country level data used in Zoomdata this level of detail may be excessive.  Users of the chart will probably not zoom in this close, as the idea is to compare between countries.  Applying a simplification algorithm to the polygons can reduce the number of vertices.  QGIS includes a tool to simplify geometries.
+For country level data used in Zoomdata this level of detail may be excessive.  Users of the chart will probably not zoom in this close, as the idea is to compare between countries.  Applying a simplification algorithm to the polygons can reduce the number of vertices.  There are a few tools that will help you simplify your polygons.  
 
-First, remove our working files from QGIS. Right click on "adm0_simplify1" in the layers panel, click "Remove" on the context menu and "OK" in the confirmation dialog.  Repeat for "gadm28_adm0_export2".  Now use the QGIS geometry simplification tool:
+QGIS includes a tool to simplify geometries.  However, the process is a bit involved.  I have some [instructions](./polygon_simplification_in_qgis.md) available, but the Mapshaper method (below) is much easier.
 
-* In QGIS select the Vector | Geometry Tools | Simplify geometries menu
-* In the Simplify geometries dialog make sure the "Input layer" is set to "gadm28_adm0[EPSG:4326]"
-* Set the tolerance.  This is the magic parameter that determines the amount of vertices to remove.  
+[mapshaper](http://mapshaper.org) provides some simple, interactive tools for simplifying polygons and creating TopoJSON.
+* Open a browser page to http://mapshaper.org
+* Either open your GeoJSON file from the dialog or drag it from your file system and drop it on the window
+* On the tool bar in the upper left there is an option for "Simplify"
+* A dialog appears with multiple options.  You can stick with the defaults for now and come back later to experiment with the different simplification algorithms to determine the best one for your data
+* A slider bar appears at the top.  Adjust the slider to a lower percent and evaluate when the polygons start to deteriorate past the desired appearance.  Zoom in on detail areas to get a good perspective of the changes.  For example, if polygons start separating where they used to touch that might be too much simplification
+* Once you have the simplification set the way you want it click "Export" on the left side of the toolbar.  Select either "GeoJSON" or "TopoJSON".  TopoJSON will be smaller for dense polygon collections where the polygons share borders
 
-The result is a layer that is much less detailed.  Below you see the new, simplified layer (green) over the original, detailed layer (blue).
-
-![comparison](./images/norway_verticies_simplified.png)
-
-While this looks significant, this image is zoomed in to a very detailed level.  Zoomed out a bit further shows that the polygons are acceptable for a high-level view of countries.
-
-![comparison zoomed out](./images/norway_original_vs_simplified.png)
-
-The overall outline of the country is still recognizable, with a significant savings in file size.
-
-It is up to you to judge if the sacrifice of detail is acceptable.  The parameters for the simplification can be adjusted to remove fewer verticies, with a corresponding file size penalty.
-
-## Convert to TopoJSON
-** NOTE: as of version 0.0.1 the Custom Regions Visualization does not support TopoJSON.  Work is on-going to add this support.  These instructions are for future versions **
-
-TopoJSON is an alternate representation of the polygons, still in a JSON format.  At a high level the format identifies the lines as individual items, then assembles polygons using references to the lines.  Shared borders are only represented once, eliminating redundancy in the data file, decreasing file size.  Details of the format are available on the [TopoJSON Wiki Page](https://github.com/topojson/topojson/wiki).
-
-Creating a TopoJSON requires a GeoJSON file for input.  Follow the instructions above to create a GeoJSON, performing additional simplification steps to further reduce the file sice if appropriate.
 
 # Convert the JSON to a Javascript object
 The Custom Regions chart expects the polygons to be in a Javascript object, not a JSON file.
 
-* Open the file in a text editor and add `var countries = ` at the start (change `countries` to a variable name appropriae for your data)
+* Open the file in a text editor and add `var countries = ` at the start (change `variableName` to a variable name appropriate for your data).  This makes the JSON into a Javascript object that can be ingested by the custom visualization code
 * Rename the file "gadm28_adm0_simplified.js"
 * Follow the instructions for [customizing the custom regions custom visualization](./customizing_the_map.md)
 
