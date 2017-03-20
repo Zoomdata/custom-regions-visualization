@@ -13,6 +13,14 @@
   var validateVariables = function(vars) {
     var result = true;
     var message = '';
+    vars.regionsConfig.forEach(function(region) {
+      if(!window[region.regionData]) {
+        result = false;
+        message += 'Polygons for ' + vars.regionsConfig.regionData + ' not defined.  Load the polygons as a library in chart studio and make sure the variable name is correct';
+      }
+      //TODO: else check if the region field in the data is valid
+      //TODO: check that the groupName field is valid, need to figure out how
+    });
     return {
       result: result,
       message: message
@@ -22,7 +30,7 @@
   // The administrator creating this visualization goes to the chart Configuration
   //associated with the data source and
   try {
-    userVariables = JSON.parse(controller.variables['Map Configuration']);
+    var userVariables = JSON.parse(controller.variables['Map Configuration']);
   }
   catch(e) {
     console.error('Unable to parse configuration string.  Make sure the confiuration string contains well formatted JSON');
@@ -31,13 +39,13 @@
     return;
   }
 
+  //This is just to help developers/admins to know when there is a problem with the config
   validationResult = validateVariables(userVariables);
   if(!validationResult.result) {
     console.error('Error in the map configuration variables');
     console.error(validationResult.message);
     console.error('configuration variable:', userVariables);
   }
-console.log('Incoming configuration:', userVariables);
   //Example setting the tile server parameters manually, in this case for OpenStreetMap Mapnik
   //userVariables.tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   //	maxZoom: 19,
@@ -59,7 +67,6 @@ console.log('Incoming configuration:', userVariables);
 
   var div = $(controller.element).append('<div id="' + mapId +
   '" style="width:100%; height:100%" />').find(mapId).first();
-
   $(div).addClass('map');
 
   var maxBounds = new L.LatLngBounds(
@@ -68,7 +75,7 @@ console.log('Incoming configuration:', userVariables);
   );
 
   if(map !== undefined) {console.log('Map exists ', map);}
-  var map = L.map('map-' + uuid, {
+  var map = L.map(mapId, {
       maxBounds: maxBounds,
       minZoom: userVariables.bounds.minZoom
   }).setView(userVariables.initialExtent.centerPoint,
@@ -105,7 +112,6 @@ console.log('Incoming configuration:', userVariables);
             }
         });
         if(badGeom > 0) console.error('Found ', badGeom, ' invalid geometries when creating dynamic filter');
-        console.log('Created filter with ' , newFilter.length, ' ' , region.regionField);
         region.filter = {
             path: region.groupName,
             value: newFilter,
@@ -121,7 +127,6 @@ console.log('Incoming configuration:', userVariables);
     //way to avoid that, except not filtering - but that has other issues.  Maybe
     //make a check box and flag that the user can set to enable/disable auto-filtering)
     function setLayerFilter() {
-        console.log('setting dynamic filter.  Current query filters:', controller.query.filters.get());
         var currRegion = getVisibleLayer();
         updateRegionFilter(currRegion);
         currFilters = controller.query.filters.get();
@@ -146,7 +151,6 @@ console.log('Incoming configuration:', userVariables);
   // Given a zoom level set the currently visible layer
   //and associated grouping in Zoomdata query
   function setCurrentLayer() {
-console.log('Setting current layer');
     userVariables.regionsConfig.forEach(function(currRegion) {
         if(regionInZoomRange(currRegion)) {
             if(!currRegion.visible) {
@@ -214,7 +218,6 @@ id = feature.properties[visibleRegion.regionField]
 
       if (dataLookup && id in dataLookup) {
           fillColor = getMetrics().Color.color(dataLookup[id]);
-          console.log('Found ', id, " setting fillColor to ", fillColor);
       }
 
       //style depends on shape.  For lines we don't have a fill, just border.  Points
@@ -249,11 +252,10 @@ id = feature.properties[visibleRegion.regionField]
       //Note, we are assuming that all features in a geojson are same type - not
       //mixing points with polygons, etc.
       regions.forEach(function(region) {
-console.log('creating region:', window[region.regionData]);
+console.log(mapId, 'creating region:', window[region.regionData]);
             //Handle geojson different from topojson
           switch(window[region.regionData].type) {
               case 'FeatureCollection':
-                  console.log('geojson')
                   switch(window[region.regionData].features[0].geometry.type) {
                   case 'Polygon':
                   case 'MultiPolygon':
