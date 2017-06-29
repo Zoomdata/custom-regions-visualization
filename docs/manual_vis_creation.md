@@ -8,13 +8,12 @@ In Zoomdata (as a user with administrator access) open chart studio and create a
 
 Highlight all of the code in 'styles.css' and paste the copied code
 
-Select the drop-down next to "zoomable-map.js" and select "Delete" from the drop-down menu
+Select "zoomable-map.js" file.  Highlight all of the contents in zoomable-map.js and delete.
 
 Open the custom_regions/components/CustomRegionsMap.js from the extracted archive using a text editor , select all text and copy
 
-In chart studio click the green "Add" button and name the new file "CustomRegionsMap.js", with "text/javascript" as the type
+Paste the copied code into the empty zoomable-map.js file in Chart Studio.
 
-Paste the copied Javascript code into the visualization
 
 Select the "Manage" button and "Libraries" from the menu
 
@@ -34,9 +33,7 @@ Leave the color variable, need that
 
 On the "Query" tab change the name of the "State" variable to "region"
 
-On the "Constants" tab delete the "Tile Provier", "Limit", "County", "Tile Provider API Key", "Zip Code" variables (leaving "Chart Description" and "Chart Name" as the only two items in the Constants tab).  Click "Accept"
-
-
+On the "Constants" tab delete the "Tile Provider", "Limit", "County", "Tile Provider API Key", "Zip Code" variables (leaving "Chart Description" and "Chart Name" as the only two items in the Constants tab).  Click "Accept"
 
 
 
