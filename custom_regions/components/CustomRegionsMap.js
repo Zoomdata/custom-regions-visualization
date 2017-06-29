@@ -1,11 +1,13 @@
 /*
- * Copyright (C) Zoomdata, Inc. 2012-2016. All rights reserved.
- * Custom Regions map chart version 0.0.2
+ * Copyright (C) Zoomdata, Inc. 2012-2017. All rights reserved.
  */
 /* global controller */
 
 (function() {
 
+ var visualizationVersion = "0.0.3"
+ //Version with the interaction fixed, including radial menu and firing interaction event when embedded
+ console.log("Custom Regions visualization version " + visualizationVersion);
   /*
   Help out the administrator who is configuring the map.  Make sure that all of the right
   variables are present and declared.
@@ -33,18 +35,18 @@
     var userVariables = JSON.parse(controller.variables['Map Configuration']);
   }
   catch(e) {
-    console.error('Unable to parse configuration string.  Make sure the confiuration string contains well formatted JSON');
+    console.error('CR: Unable to parse configuration string.  Make sure the confiuration string contains well formatted JSON');
     console.error(e.message);
-    console.error('Configuration string is:', controller.variables['Map Configuration']);
+    console.error('CR: Configuration string is:', controller.variables['Map Configuration']);
     return;
   }
 
   //This is just to help developers/admins to know when there is a problem with the config
   validationResult = validateVariables(userVariables);
   if(!validationResult.result) {
-    console.error('Error in the map configuration variables');
+    console.error('CR: Error in the map configuration variables');
     console.error(validationResult.message);
-    console.error('configuration variable:', userVariables);
+    console.error('CR: configuration variable:', userVariables);
   }
   //Example setting the tile server parameters manually, in this case for OpenStreetMap Mapnik
   //userVariables.tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -74,14 +76,19 @@
     new L.LatLng(userVariables.bounds.southWest.lat, userVariables.bounds.southWest.lon)
   );
 
-  if(map !== undefined) {console.log('Map exists ', map);}
+  if(map !== undefined) {console.log('CR: Map exists ', map);}
   var map = L.map(mapId, {
       maxBounds: maxBounds,
       minZoom: userVariables.bounds.minZoom
   }).setView(userVariables.initialExtent.centerPoint,
                                          userVariables.initialExtent.zoomLevel);
 
-  var tileLayer = L.tileLayer.provider(userVariables.tileLayer.provider); //TODO: need to handle non-provider supported tile layers
+  //var tileLayer = L.tileLayer.provider(userVariables.tileLayer.provider); //TODO: need to handle non-provider supported tile layers
+  // https: also suppported.
+var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	maxZoom: 19,
+	attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+});
   tileLayer.addTo(map);
 
   // Used when the view changes (zooming) to detect what region set to use
@@ -97,6 +104,7 @@
   }
 
     function updateRegionFilter(region) {
+console.log("CR: updating region filter " , region);
         var newFilter = [];
         var badGeom = 0;
         region.mapLayer.eachLayer(function(l) {
@@ -111,7 +119,7 @@
                 badGeom++;
             }
         });
-        if(badGeom > 0) console.error('Found ', badGeom, ' invalid geometries when creating dynamic filter');
+        if(badGeom > 0) console.error('CR: Found ', badGeom, ' invalid geometries when creating dynamic filter');
         region.filter = {
             path: region.groupName,
             value: newFilter,
@@ -252,7 +260,7 @@ id = feature.properties[visibleRegion.regionField]
       //Note, we are assuming that all features in a geojson are same type - not
       //mixing points with polygons, etc.
       regions.forEach(function(region) {
-console.log(mapId, 'creating region:', window[region.regionData]);
+//console.log(mapId, 'CR: creating region:', window[region.regionData]);
             //Handle geojson different from topojson
           switch(window[region.regionData].type) {
               case 'FeatureCollection':
@@ -300,7 +308,7 @@ console.log(mapId, 'creating region:', window[region.regionData]);
 
   createCustomRegionLayers(userVariables.regionsConfig, map, style);
   setCurrentLayer();
-
+    setLayerFilter();
   map.on('moveend', function(e) {
       //whenever the map is moved re-calculate the filter
       setLayerFilter();
@@ -353,14 +361,14 @@ console.log(mapId, 'creating region:', window[region.regionData]);
   function featureDetails(e) {
       var feature = e.target.feature;
 
-      if (!(currRegion.regionField in dataLookup)) {
+      if (!(feature.properties[currRegion.regionField] in dataLookup)) {
           return;
       }
 
       controller.menu.show({
           event: e.originalEvent,
           data: function() {
-              return dataLookup[currRegion.regionField];
+              return dataLookup[feature.properties[currRegion.regionField]];
           }
       });
   }
