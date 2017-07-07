@@ -369,7 +369,8 @@ id = feature.properties[visibleRegion.regionField]
           event: e.originalEvent,
           data: function() {
               return dataLookup[feature.properties[currRegion.regionField]];
-          }
+          },
+          hide: ['Zoom']
       });
   }
 
