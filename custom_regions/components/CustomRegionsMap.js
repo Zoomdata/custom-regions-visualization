@@ -328,16 +328,16 @@ id = feature.properties[visibleRegion.regionField]
           fillOpacity: 0.7
       });
 
-      if (!L.Browser.ie && !L.Browser.opera) {
-          layer.bringToFront();
-      }
-
-      currRegion = getVisibleLayer();
+      var currRegion = getVisibleLayer();
       featureId = feature.properties[currRegion.regionField];
       if (!(featureId in dataLookup)) {
           return;
       }
 
+      if (!L.Browser.ie && !L.Browser.opera) {
+          layer.bringToFront();
+      }
+      
       var data = dataLookup[featureId];
       controller.tooltip.show({
           event: e.originalEvent,
@@ -360,7 +360,7 @@ id = feature.properties[visibleRegion.regionField]
 
   function featureDetails(e) {
       var feature = e.target.feature;
-
+      var currRegion = getVisibleLayer();
       if (!(feature.properties[currRegion.regionField] in dataLookup)) {
           return;
       }
