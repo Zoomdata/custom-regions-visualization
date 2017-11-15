@@ -6,7 +6,7 @@
     "minZoom": 4
   },
   "tileLayer": {
-    "provider": "OpenStreetMap.BlackAndWhite"
+    "provider": "OpenStreetMap"
   },
 
   "regionsConfig" : [{

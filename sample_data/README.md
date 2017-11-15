@@ -24,3 +24,5 @@ This folder also includes the GeoJSON data corresponding to the above field valu
   regionField: 'name'
 }
   ```
+
+There is also a configuration to demonstrate how this custom visualization can be used to show point data.  The data set is locations of hydrocarbon exloration and production wells in Afghanistan, dated May 17, 2013 from https://catalog.data.gov/dataset/oil-and-gas-wells-of-afghanistan-wellsafg-shp has been converted to a GeoJSON format file with the required variable declaration, see wellsafg.js.  Load the wellsafg.csv file into Zoomdata.  Create a new custom viz based on this custom regions sample.  Upload the wellsafg.js file as a library in the new visualization.  Activate the new visualization on the wellsafg CSV data source and paste the contents of wellsafg.json as the configuration string for the chart.

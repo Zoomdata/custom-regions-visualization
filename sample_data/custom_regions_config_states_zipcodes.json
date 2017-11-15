@@ -12,13 +12,13 @@
         "provider": "OpenStreetMap.BlackAndWhite"
     },
     "regionsConfig": [{
-        "regionData": "states_lower",
-        "groupName": "state",
-        "regionField": "state_lower",
+        "regionData": "usCensusStates",
+        "groupName": "state2",
+        "regionField": "STUSPS",
         "maxZoomLevel": 9
     },{
         "regionData": "zipcodesTopo",
-        "groupName": "postal_code",
+        "groupName": "zip",
         "regionField": "ZCTA5CE10",
         "minZoomLevel": 10
     }]
