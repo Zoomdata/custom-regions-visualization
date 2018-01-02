@@ -5,7 +5,7 @@
 
 (function() {
 
-    var visualizationVersion = "0.1.0"
+    var visualizationVersion = "0.2.0"
     //Version with the interaction fixed, including radial menu and firing interaction event when embedded
     console.log("Custom Regions visualization version " + visualizationVersion);
     /*
