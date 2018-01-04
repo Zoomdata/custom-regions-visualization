@@ -3,29 +3,46 @@
 ## Requirements
 You need:
 
-* A server runningZoomdata 2.3.5 (may work with later versions, at least minor 2.3.x releases)
-* An account in Zoomdata with membership in the Administrators group, so you can access data source configuration and chart Studio
-* The custom_regions.zip file, which contains the custom chart export from Zoomdata
-* Download this repository to your local workstation
+* A server runningZoomdata 2.5.x or 2.6.x
+* An account in Zoomdata with membership in the Administrators group, 
+so you can access data source configuration and chart Studio
+* Download or clone this repository to your local workstation
+* The Zoomdata Custom Chart Command Line Interface installed on your workstation. 
+See https://www.npmjs.com/package/zoomdata-chart-cli for instructions.
 * To customize the visualization you need one or more GeoJSON or TopoJSON files with your spatial data.  Each shape must have a property containing some name or other identifier
-
+ 
 **Note, the visualization supports GeoJSON with polygons (regions), points, and lines, and TopoJSON with polygons.  All features in a single file must have the same geometry type (don't mix points and polygons, etc)**
+
 * A data source that has an attribute containing the same names as the property in the GeoJSON; the data source should already be configured in Zoomdata
 * Enough understanding of Javascript to be able to edit the code using Chart Studio in Zoomdata; some knowledge of how to debug Javascript in the browser console
 
 ## Installation
 
-* Log in to Zoomdata as a user with administrator rights
+In order to install the custom chart you need to create a .zip file containing all of the artifacts.  Using your operating system's file explorer or a tool such as WinZip bundle all of the files and subfolders in the `custom_regions` folder of this repo into a single zip file.  The zip file should contain:
+* version
+* visualization.json
+* components/CustomRegionsMap.js
+* components/style.css
+* libs/geojson-utils.js
+* libs/leaflet-omnivore.min.js
+* libs/leaflet_0.7.2.js
+* libs/lodash.min.js
+* libs/test_region_level1.js
+* libs/test_region_level2.js
+* libs/test_region_level3.js
+* libs/topojson.js
 
-### Import the Custom Visualization
-* Open Chart Studio
-* Scroll down to the "Import Chart" section at the very bottom of the page
+**The version configured in this repository is 2.6.x.  To import the visualization into 2.5.x edit the `version` file with the value matching the version of your Zoomdata installation, then create the .zip file.**
 
-![Import Chart](images/import_option.png)
 
-* Click "Browse" and navigate to the custom_regions.zip files
-* Give your chart a meaningful name, this will be displayed when users are selecting the chart
-* Click 'Submit'.  The chart should appear in the list of custom visualizations on the page
+Once the file is created use the CLI to add the chart to your Zoomdata server.  Open a command prompt and
+change to the directory containing the zip file created above.  Enter the following command:
+
+`zd-chart add -a <http[s]://<serveraddress>:<port>/<zoomdata> -u <username>:<password> "<chart name>" <filename.zip>`
+
+Substitute the appropriate values in each of the fields above.  For example, an actual command might be:
+
+`zd-chart add -a https://zdserver.zoomdata.com:443/zoomdata -u developer:Password "Custom Regions" ./custom_regions.zip`
 
 ### Configure the Data Source
 The custom visualization in this repository is configured with a set of test polygons at 3 zoom levels.  The associated data file is in the /sample_data folder of this project.  To get the chart to work out of the box, first add this data set to Zoomdata.
