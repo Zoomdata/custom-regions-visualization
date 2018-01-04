@@ -30,36 +30,32 @@
     }
 
     // The administrator creating this visualization goes to the chart Configuration
-    //associated with the data source and
+    //associated with the data source and sets the Map Configuration variable to a JSON object matching the specification
     try {
         var userVariables = JSON.parse(controller.variables['Map Configuration']);
     }
     catch(e) {
-        console.error('CR: Unable to parse configuration string.  Make sure the confiuration string contains well formatted JSON');
+        // Couldn't parse the JSON, so the user needs to check that it is valid JSON (did you miss the ending }?)
+        console.error('CR: Unable to parse configuration string.  Make sure the configuration string contains well formatted JSON');
         console.error(e.message);
         console.error('CR: Configuration string is:', controller.variables['Map Configuration']);
         return;
     }
 
     //This is just to help developers/admins to know when there is a problem with the config
-    validationResult = validateVariables(userVariables);
+    var validationResult = validateVariables(userVariables);
     if(!validationResult.result) {
         console.error('CR: Error in the map configuration variables');
         console.error(validationResult.message);
         console.error('CR: configuration variable:', userVariables);
     }
-    //Example setting the tile server parameters manually, in this case for OpenStreetMap Mapnik
+    //Example setting the tile server parameters manually, in this case for OpenStreetMap Mapnik.  This is
+    // used for customers with on-prem map server
+    //TODO: make this something users can set in the configuration string
     //userVariables.tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     //	maxZoom: 19,
     //	attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     //});
-
-    /*
-    ****************
-    End User Customization Section
-    Everything from here down is visualization logic
-    ****************
-    */
 
     var dataLookup = {}; //this will contain the results from Zoomdata
 
@@ -71,6 +67,8 @@
         '" style="width:100%; height:100%" />').find(mapId).first();
     $(div).addClass('map');
 
+    // Maximum boundaries, locks the chart so user can't pan past the edge or zoom too far out.  This
+    // helps keep the user from getting lost, going to some part of the world with no data
     var maxBounds = new L.LatLngBounds(
         new L.LatLng(userVariables.bounds.northEast.lat, userVariables.bounds.northEast.lon),
         new L.LatLng(userVariables.bounds.southWest.lat, userVariables.bounds.southWest.lon)
@@ -84,7 +82,7 @@
         userVariables.initialExtent.zoomLevel);
 
     //var tileLayer = L.tileLayer.provider(userVariables.tileLayer.provider); //TODO: need to handle non-provider supported tile layers
-    // https: also suppported.
+    // https: also supported.
     var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -103,22 +101,37 @@
         return(result);
     }
 
+    // For each region get a collection of all of the polygon IDs.  These will be used as a filter
+    // when the user has turned off dynamic filtering.  With dynamic filtering off the colors won't change
+    // after pan or zoom operations.  However, if there are lot of shapes the filter collection could be very large
+    // which may impact performance.
+    function createMaximumRegionFilters(region) {
+        region.maxFilters= [];
+        window[region.regionData].features.forEach(function(feature) {
+           region.maxFilters.push(feature.properties[region.regionField]);
+        });
+    }
+
     function updateRegionFilter(region) {
         console.log("CR: updating region filter " , region);
         var newFilter = [];
         var badGeom = 0;
-        region.mapLayer.eachLayer(function(l) {
-            var featureBounds = l.getBounds();
-            //there seems to be an issue with multipolygons, or some issue with the way we are
-            //reducing the data or generating topojson.  The bounds for some features is coming back {}
-            try {
-                if( map.getBounds().intersects(l.getBounds()) ) {
-                    newFilter.push(l.feature.properties[region.regionField]);
+        if(controller.variables['Fixed Colors']) {
+            newFilter = region.maxFilters;
+        } else {
+            region.mapLayer.eachLayer(function (l) {
+                var featureBounds = l.getBounds();
+                //there seems to be an issue with multipolygons, or some issue with the way we are
+                //reducing the data or generating topojson.  The bounds for some features is coming back {}
+                try {
+                    if (map.getBounds().intersects(l.getBounds())) {
+                        newFilter.push(l.feature.properties[region.regionField]);
+                    }
+                } catch (e) {
+                    badGeom++;
                 }
-            } catch(e) {
-                badGeom++;
-            }
-        });
+            });
+        }
         if(badGeom > 0) console.error('CR: Found ', badGeom, ' invalid geometries when creating dynamic filter');
         region.filter = {
             path: region.groupName,
@@ -143,6 +156,7 @@
             userVariables.regionsConfig.forEach(function(r) {
                 //some filter exists.  Search the list, remove any filters with
                 //path that matches a region grouping
+                //TODO: potential IE support issue, Array.find
                 var matchingFilter = currFilters.find(function(f) {
                     var result = false;
                     if(f.path === r.groupName) {
@@ -157,17 +171,22 @@
     }
 
     // Given a zoom level set the currently visible layer
-    //and associated grouping in Zoomdata query
+    //and associated grouping in Zoomdata query.  If the layer changed
+    // then return true so other components can be updated appropriately
     function setCurrentLayer() {
+        var result = true;
         userVariables.regionsConfig.forEach(function(currRegion) {
             if(regionInZoomRange(currRegion)) {
                 if(!currRegion.visible) {
+                    console.log('Setting current layer to', currRegion.groupName);
                     currRegion.visible = true;
                     currRegion.mapLayer.addTo(map);
                     var currGroup = controller.dataAccessors.region.getGroup();
                     currGroup.name = currRegion.groupName;
                     currGroup.limit = currRegion.numFeatures,
                         controller.dataAccessors.region.setGroup((currRegion.groupName, currGroup));
+                } else {
+                    result = false;
                 }
             } else {
                 map.removeLayer(currRegion.mapLayer);
@@ -177,6 +196,7 @@
                 }
             }
         });
+        return result;
     }
 
     function getVisibleLayer() {
@@ -205,7 +225,6 @@
     }
 
     function style(feature) {
-        var id;
         var fillColor = 'rgb(245,245,245)'; //default to light grey
         var sym = { //default Symbol
             weight: 2,
@@ -222,12 +241,12 @@
             return currRegion.visible;
         });
         if(visibleRegion) {
-            id = feature.properties[visibleRegion.regionField]
-
-            if (dataLookup && id in dataLookup) {
-                fillColor = getMetrics().Color.color(dataLookup[id]);
+            var id = feature.properties[visibleRegion.regionField]
+            if((_.isString(id))) {
+                if (dataLookup && id in dataLookup) {
+                    fillColor = getMetrics().Color.color(dataLookup[id]);
+                }
             }
-
             //style depends on shape.  For lines we don't have a fill, just border.  Points
             //are circles, so they are treated same as polygons
 
@@ -237,7 +256,7 @@
                     sym = {
                         weight: 3,
                         opacity: 1,
-                        color: fillColor,
+                        color: fillColor
                     };
                     break;
                 default:
@@ -303,19 +322,34 @@
                     break;
             }
             //       region.filter = {};
+            // If needed build the max filter set for
+            if(controller.variables["Fixed Colors"]) {
+                createMaximumRegionFilters(region);
+            }
         });
     }
 
     createCustomRegionLayers(userVariables.regionsConfig, map, style);
     setCurrentLayer();
+
+
     setLayerFilter();
+
+
     map.on('moveend', function(e) {
-        //whenever the map is moved re-calculate the filter
-        setLayerFilter();
+        //whenever the map is moved re-calculate the filter if we are doing dynamic region filtering
+        if(!controller.variables["Fixed Colors"]) {
+            setLayerFilter();
+        }
     });
 
     map.on('zoomend', function(e) {
-        setCurrentLayer();
+        var layerChanged = setCurrentLayer();
+        //if current layer changed and we are not doing dynamic region filtering then we need to set the filters to the new regions
+        //this only happens on zoom.  If we are using dynamic region filtering then the layers are set over in moveend event
+        if(controller.variables["Fixed Colors"] && layerChanged) {
+            setLayerFilter();
+        }
     });
 
     function highlightFeature(e) {
@@ -400,6 +434,7 @@
     };
 
     controller.update = function(data, progress) {
+        console.log('Update:', data);
         // Called when new data arrives
         dataLookup = {};
         for (var i = 0; i < data.length; i++) {
